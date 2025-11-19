@@ -31,6 +31,68 @@ nano .env
 docker compose restart cloudflared
 ```
 
+## ❌ Error 502: Bad Gateway
+
+**Error Message:**
+```
+Bad gateway Error code 502
+Visit cloudflare.com for more information.
+```
+
+**Penyebab:**
+- Cloudflare Tunnel berjalan, tapi tidak bisa reach origin (nginx)
+- Service URL di Cloudflare Dashboard salah
+- Nginx tidak running atau tidak healthy
+- Network connectivity issue antara cloudflared dan nginx
+
+**Solusi Cepat:**
+
+```bash
+# 1. Check nginx status
+docker compose ps nginx
+
+# 2. Test connectivity
+docker compose exec cloudflared wget -O- http://nginx:80
+
+# 3. Check Cloudflare Dashboard Public Hostname
+# Service URL harus: http://nginx:80 (jika di Docker) atau http://localhost:80 (jika di host)
+
+# 4. Restart services
+docker compose restart nginx cloudflared
+```
+
+**Detail Solusi:**
+
+1. **Check Nginx Status:**
+   ```bash
+   docker compose ps nginx
+   # Pastikan status "Up" dan "healthy"
+   ```
+
+2. **Test Connectivity:**
+   ```bash
+   # From cloudflared to nginx
+   docker compose exec cloudflared wget -O- http://nginx:80
+   
+   # From host
+   curl http://localhost:80
+   ```
+
+3. **Update Cloudflare Dashboard:**
+   - Buka: https://one.dash.cloudflare.com/
+   - Zero Trust > Networks > Tunnels
+   - Pilih tunnel > Configure > Public Hostname
+   - **Service URL harus:**
+     - `http://nginx:80` (jika tunnel di Docker network) ✅ RECOMMENDED
+     - `http://localhost:80` (jika tunnel di host)
+   - Klik Save
+
+4. **Restart Cloudflared:**
+   ```bash
+   docker compose restart cloudflared
+   docker compose logs -f cloudflared
+   ```
+
 ## ❌ Error 1033: Connection Terminated
 
 **Error Message:**
@@ -161,12 +223,24 @@ Jika token expired atau invalid:
 
 ### Solusi 4: Check Cloudflare Dashboard Configuration
 
+**⚠️ PENTING untuk Error 502:**
+
 Pastikan di Cloudflare Dashboard:
 
 1. **Public Hostname:**
    - Domain: `pos.faiznute.site` (atau domain Anda)
-   - Service: `http://nginx:80` (atau `http://localhost:80` jika di host)
-   - **PENTING:** Gunakan `nginx:80` jika di Docker network, atau `localhost:80` jika di host
+   - **Service URL:** 
+     - ✅ `http://nginx:80` - **Gunakan ini jika tunnel di Docker network** (RECOMMENDED)
+     - `http://localhost:80` - Hanya jika tunnel di host (bukan di Docker)
+   - **PENTING:** Jika cloudflared di Docker, HARUS gunakan `nginx:80` bukan `localhost:80`
+   
+2. **Cara Update:**
+   - Buka: https://one.dash.cloudflare.com/
+   - Zero Trust > Networks > Tunnels
+   - Pilih tunnel > Configure > Public Hostname
+   - Edit Service URL menjadi: `http://nginx:80`
+   - Klik Save
+   - Restart cloudflared: `docker compose restart cloudflared`
 
 2. **Origin Configuration:**
    - Jika tunnel di Docker: `http://nginx:80`
