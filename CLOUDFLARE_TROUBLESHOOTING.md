@@ -2,6 +2,35 @@
 
 Panduan lengkap untuk mengatasi masalah Cloudflare Tunnel, khususnya Error 1033.
 
+## ❌ Cloudflared Restarting Loop
+
+**Gejala:**
+```
+STATUS: Restarting (0) 13 seconds ago
+```
+
+**Penyebab:**
+- Tunnel token tidak di-set atau kosong
+- Tunnel token invalid atau expired
+- Network connectivity issues
+- Cloudflare service issues
+
+**Solusi Cepat:**
+```bash
+# Check logs
+docker compose logs cloudflared
+
+# Check token
+grep CLOUDFLARE_TUNNEL_TOKEN .env
+
+# If empty, set token
+nano .env
+# Add: CLOUDFLARE_TUNNEL_TOKEN=your_token_here
+
+# Restart
+docker compose restart cloudflared
+```
+
 ## ❌ Error 1033: Connection Terminated
 
 **Error Message:**

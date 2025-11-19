@@ -155,7 +155,15 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: warungin-cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --retries 5
+    command: >
+      sh -c "
+      if [ -z \"$$TUNNEL_TOKEN\" ]; then
+        echo 'ERROR: CLOUDFLARE_TUNNEL_TOKEN is not set. Please set it in .env file.'
+        echo 'Get token from: https://one.dash.cloudflare.com/ > Zero Trust > Networks > Tunnels'
+        exit 1
+      fi
+      cloudflared tunnel --no-autoupdate run --retries 5
+      "
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
     networks:
