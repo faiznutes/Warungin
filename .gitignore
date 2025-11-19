@@ -43,6 +43,7 @@ redis_data/
 *~
 .DS_Store
 Thumbs.db
+tasks.json
 
 # OS
 .DS_Store
@@ -81,6 +82,10 @@ prisma/migrations/*.sql
 
 # Scripts output
 *.sh.log
+
+# Verification files
+CHECK_REQUIRED_FILES.md
+verify-structure.sh
 
 # Archives
 *.zip
