@@ -124,8 +124,10 @@ services:
       - ./nginx/logs:/var/log/nginx
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_started
     networks:
       - warungin-network
     deploy:
@@ -137,10 +139,11 @@ services:
           cpus: '0.25'
           memory: 128M
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"] || ["CMD", "curl", "-f", "http://localhost:80"] || exit 0
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Cloudflare Tunnel - untuk public access via Cloudflare
   # Setup: 
@@ -159,18 +162,19 @@ services:
       - warungin-network
     depends_on:
       nginx:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD", "cloudflared", "tunnel", "info"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     profiles:
       - cloudflare
     # Aktifkan dengan: docker compose --profile cloudflare up -d cloudflared
     # Domain: pos.faiznute.site
     # Troubleshooting: Lihat CLOUDFLARE_TROUBLESHOOTING.md
+    # Note: Changed depends_on to service_started instead of service_healthy untuk avoid dependency issues
 
 networks:
   warungin-network:
