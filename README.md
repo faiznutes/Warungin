@@ -77,6 +77,31 @@ git log --oneline
 git pull origin main
 ```
 
+## 🔐 Setup Authentication GitHub
+
+Jika Anda login GitHub menggunakan **Gmail**, Anda perlu setup authentication terlebih dahulu.
+
+### Quick Setup
+
+Jalankan script setup authentication:
+
+```bash
+bash setup-auth.sh
+```
+
+Atau ikuti panduan lengkap di file `setup-github-auth.md`.
+
+### Opsi Authentication:
+
+1. **Personal Access Token** (Paling Mudah) - Rekomendasi untuk pemula
+2. **SSH Key** (Lebih Aman) - Rekomendasi untuk keamanan
+3. **GitHub CLI** - Otomatis handle authentication
+
+**Catatan Penting:**
+- GitHub tidak lagi menerima password biasa
+- Gunakan Personal Access Token atau SSH Key
+- Token hanya ditampilkan sekali saat dibuat, simpan dengan aman!
+
 ## 🔧 Troubleshooting
 
 ### Git tidak terdeteksi
@@ -88,7 +113,14 @@ git --version
 ### Remote belum di-setup
 Jalankan `bash setup-github.sh` untuk setup remote GitHub.
 
-### Push gagal
-- Pastikan koneksi internet aktif
-- Pastikan credentials GitHub sudah benar
-- Cek apakah repository di GitHub sudah dibuat
+### Push gagal - Authentication failed
+- Pastikan sudah setup authentication (jalankan `bash setup-auth.sh`)
+- Jika menggunakan Token, pastikan token belum expired
+- Jika menggunakan SSH, pastikan SSH key sudah ditambahkan ke GitHub
+- Lihat panduan lengkap di `setup-github-auth.md`
+
+### Error: Support for password authentication was removed
+GitHub tidak lagi menerima password. Setup Personal Access Token atau SSH Key dengan menjalankan:
+```bash
+bash setup-auth.sh
+```
