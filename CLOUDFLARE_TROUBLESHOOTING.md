@@ -69,29 +69,47 @@ docker compose restart nginx cloudflared
    # Pastikan status "Up" dan "healthy"
    ```
 
-2. **Test Connectivity:**
+2. **Fix Network Connectivity:**
    ```bash
-   # From cloudflared to nginx
+   # Stop cloudflared jika restarting
+   docker compose stop cloudflared
+   
+   # Recreate dengan network yang benar
+   docker compose --profile cloudflare down cloudflared
+   docker compose --profile cloudflare up -d cloudflared
+   
+   # Wait for it to start
+   sleep 10
+   
+   # Test connectivity
+   docker compose exec cloudflared wget -O- http://nginx:80
+   ```
+
+3. **Test Connectivity:**
+   ```bash
+   # From cloudflared to nginx (harus berhasil)
    docker compose exec cloudflared wget -O- http://nginx:80
    
    # From host
    curl http://localhost:80
    ```
 
-3. **Update Cloudflare Dashboard:**
+4. **Update Cloudflare Dashboard:**
    - Buka: https://one.dash.cloudflare.com/
    - Zero Trust > Networks > Tunnels
    - Pilih tunnel > Configure > Public Hostname
-   - **Service URL harus:**
-     - `http://nginx:80` (jika tunnel di Docker network) ✅ RECOMMENDED
-     - `http://localhost:80` (jika tunnel di host)
+   - **Service URL HARUS:**
+     - ✅ `http://nginx:80` (jika tunnel di Docker network) - **Gunakan ini!**
+     - ❌ JANGAN gunakan `http://localhost:80` jika cloudflared di Docker
    - Klik Save
 
-4. **Restart Cloudflared:**
+5. **Restart Cloudflared:**
    ```bash
    docker compose restart cloudflared
    docker compose logs -f cloudflared
    ```
+
+**⚠️ PENTING:** Jika cloudflared di Docker network yang sama dengan nginx, Service URL di Cloudflare Dashboard **HARUS** `http://nginx:80`, bukan `http://localhost:80`!
 
 ## ❌ Error 1033: Connection Terminated
 
