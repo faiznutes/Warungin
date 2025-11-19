@@ -83,9 +83,9 @@ prisma/migrations/*.sql
 # Scripts output
 *.sh.log
 
-# Verification files
-CHECK_REQUIRED_FILES.md
-verify-structure.sh
+# Verification files (keep these, they're useful)
+# CHECK_REQUIRED_FILES.md
+# verify-structure.sh
 
 # Archives
 *.zip
