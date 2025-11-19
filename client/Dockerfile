@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (use npm install if package-lock.json doesn't exist)
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Install dependencies
+# Use npm install to handle lock file sync issues, fallback to legacy-peer-deps if needed
+RUN npm install --legacy-peer-deps || npm install
 
 # Copy source code
 COPY . .
