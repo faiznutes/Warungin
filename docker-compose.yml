@@ -159,9 +159,7 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
     networks:
-      warungin-network:
-        aliases:
-          - cloudflared
+      - warungin-network
     depends_on:
       nginx:
         condition: service_started
@@ -173,7 +171,10 @@ services:
       start_period: 60s
     profiles:
       - cloudflare
-    # Note: Service URL di Cloudflare Dashboard harus: http://nginx:80
+    # Note: 
+    # - Service URL di Cloudflare Dashboard: http://nginx:80 (jika di Docker network)
+    # - Atau: http://host.docker.internal:80 (jika perlu akses host)
+    # - Atau: http://localhost:80 (jika cloudflared di host network - tidak recommended)
     # Aktifkan dengan: docker compose --profile cloudflare up -d cloudflared
     # Domain: pos.faiznute.site
     # Troubleshooting: Lihat CLOUDFLARE_TROUBLESHOOTING.md
