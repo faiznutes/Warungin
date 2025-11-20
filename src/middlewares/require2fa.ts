@@ -8,7 +8,7 @@ import { AuthRequest } from './auth';
 import prisma from '../config/database';
 import logger from '../utils/logger';
 
-const ADMIN_ROLES_REQUIRING_2FA = ['ADMIN_TENANT', 'SUPER_ADMIN'];
+const ADMIN_ROLES_REQUIRING_2FA = ['ADMIN_TENANT']; // SUPER_ADMIN removed - can bypass 2FA
 
 /**
  * Middleware to require 2FA for admin roles

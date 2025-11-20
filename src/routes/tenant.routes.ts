@@ -52,6 +52,13 @@ router.post(
       const authReq = req as AuthRequest;
       const userRole = authReq.role || (authReq as any).user?.role;
       
+      // Log request for debugging
+      logger.info('Tenant creation request', {
+        userId: authReq.userId,
+        role: userRole,
+        body: { ...req.body, name: req.body.name?.substring(0, 20) }, // Log partial name for privacy
+      });
+      
       if (userRole !== 'SUPER_ADMIN') {
         logger.warn('Unauthorized tenant creation attempt', {
           userId: authReq.userId,
