@@ -198,45 +198,46 @@
   router.use('/archives', archiveRoutes);
   ```
 - [x] **Tambahkan ke v1 routes `src/routes/v1/index.ts`** ✅
-- [ ] **Buat frontend view `client/src/views/settings/ArchiveManagement.vue`**
-- [ ] **Tambahkan menu di TenantLayout sidebar**
+- [x] **Buat frontend view `client/src/views/settings/ArchiveManagement.vue`** ✅
+- [x] **Tambahkan menu di TenantLayout sidebar** ✅
 
-**Estimated Time:** 4-6 hours (Backend: ✅ Complete, Frontend: ⏳ Pending)
+**Estimated Time:** 4-6 hours (Backend: ✅ Complete, Frontend: ✅ Complete)
 
 ---
 
 #### 2. Product Adjustment UI ⚠️ **HIGH**
-- [ ] **Buat `client/src/views/products/ProductAdjustments.vue`**
-  - List adjustment history dengan filter
-  - Detail adjustment (before/after stock)
-  - Reason & user info
-- [ ] **Integrate dengan `Products.vue`**
-  - Tab "Adjustments" di product detail
-  - Quick adjustment button
-- [ ] **Update route di `client/src/router/index.ts`**
+- [x] **Buat `client/src/views/products/ProductAdjustments.vue`** ✅
+  - List adjustment history dengan filter ✅
+  - Detail adjustment (before/after stock) ✅
+  - Reason & user info ✅
+- [x] **Integrate dengan `Products.vue`** ✅
+  - Tab "Adjustments" di product detail (via component) ✅
+  - Quick adjustment button (via component) ✅
+- [x] **Update route di `client/src/router/index.ts`** ✅
   ```typescript
   {
-    path: 'products/:id/adjustments',
+    path: 'products/adjustments',
     name: 'product-adjustments',
     component: () => import('../views/products/ProductAdjustments.vue'),
   }
   ```
+- [x] **Tambahkan menu di TenantLayout** ✅
 
-**Estimated Time:** 6-8 hours
+**Estimated Time:** 6-8 hours (✅ Complete)
 
 ---
 
 #### 3. Receipt Template Management UI ⚠️ **HIGH**
-- [ ] **Buat `client/src/views/receipts/ReceiptTemplates.vue`**
-  - List all templates
-  - Preview template (live preview)
-  - Create/Edit template form
-  - Set default template
-  - Delete template (dengan warning jika sedang digunakan)
-- [ ] **Buat `client/src/components/ReceiptTemplatePreview.vue`**
-  - Live preview dengan sample data
-  - Print preview
-- [ ] **Update route di `client/src/router/index.ts`**
+- [x] **Buat `client/src/views/receipts/ReceiptTemplates.vue`** ✅
+  - List all templates ✅
+  - Preview template (live preview) ✅
+  - Create/Edit template form ✅
+  - Set default template ✅
+  - Delete template (dengan warning jika sedang digunakan) ✅
+- [x] **Buat `client/src/components/ReceiptTemplatePreview.vue`** ✅
+  - Live preview dengan sample data (via ReceiptTemplateManager component) ✅
+  - Print preview (via ReceiptTemplateManager component) ✅
+- [x] **Update route di `client/src/router/index.ts`** ✅
   ```typescript
   {
     path: 'receipts/templates',
@@ -244,9 +245,9 @@
     component: () => import('../views/receipts/ReceiptTemplates.vue'),
   }
   ```
-- [ ] **Tambahkan menu di TenantLayout**
+- [x] **Tambahkan menu di TenantLayout** ✅
 
-**Estimated Time:** 8-10 hours
+**Estimated Time:** 8-10 hours (✅ Complete)
 
 ---
 

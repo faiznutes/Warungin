@@ -269,6 +269,24 @@ const router = createRouter({
           meta: { roles: ['ADMIN_TENANT', 'SUPERVISOR', 'CASHIER', 'KITCHEN', 'SUPER_ADMIN'] },
         },
         {
+          path: 'settings/archive',
+          name: 'archive-management',
+          component: () => import('../views/settings/ArchiveManagement.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
+          path: 'products/adjustments',
+          name: 'product-adjustments',
+          component: () => import('../views/products/ProductAdjustments.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
+          path: 'receipts/templates',
+          name: 'receipt-templates',
+          component: () => import('../views/receipts/ReceiptTemplates.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
           path: 'stores',
           name: 'stores',
           component: () => import('../views/stores/Stores.vue'),
