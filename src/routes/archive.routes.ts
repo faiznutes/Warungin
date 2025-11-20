@@ -5,9 +5,10 @@ import { requireTenantId } from '../utils/tenant';
 import { AuthRequest } from '../middlewares/auth';
 import { validate } from '../middlewares/validator';
 import { z } from 'zod';
-import { logAction } from '../middlewares/audit-logger';
+import { auditLogger } from '../middlewares/audit-logger';
 import * as path from 'path';
 import * as fs from 'fs';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -41,6 +42,24 @@ const restoreArchiveSchema = z.object({
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Archive statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ordersArchived:
+ *                   type: integer
+ *                 transactionsArchived:
+ *                   type: integer
+ *                 reportsArchived:
+ *                   type: integer
+ *                 totalSize:
+ *                   type: number
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/stats',
@@ -50,8 +69,8 @@ router.get(
       const tenantId = requireTenantId(req);
       const stats = await archiveService.getArchiveStats(tenantId);
       res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );
@@ -64,6 +83,33 @@ router.get(
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of archive files
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 files:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       path:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                         enum: [orders, transactions, reports]
+ *                       size:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/files',
@@ -141,8 +187,8 @@ router.get(
       files.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       res.json({ files });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );
@@ -155,12 +201,40 @@ router.get(
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               olderThanDays:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 365
+ *                 description: Archive orders older than this many days
+ *     responses:
+ *       200:
+ *         description: Orders archived successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 count:
+ *                   type: integer
+ *       403:
+ *         description: Forbidden - Only admin can archive
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/orders',
   authGuard,
   validate({ body: archiveOrdersSchema }),
-  logAction('ARCHIVE', 'orders'),
+  auditLogger('ARCHIVE', 'orders'),
   async (req: AuthRequest, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -176,8 +250,8 @@ router.post(
         message: `Archived ${count} orders`,
         count,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );
@@ -190,12 +264,30 @@ router.post(
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               olderThanDays:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 365
+ *     responses:
+ *       200:
+ *         description: Transactions archived successfully
+ *       403:
+ *         description: Forbidden
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/transactions',
   authGuard,
   validate({ body: archiveTransactionsSchema }),
-  logAction('ARCHIVE', 'transactions'),
+  auditLogger('ARCHIVE', 'transactions'),
   async (req: AuthRequest, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -211,8 +303,8 @@ router.post(
         message: `Archived ${count} transactions`,
         count,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );
@@ -225,12 +317,30 @@ router.post(
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               olderThanDays:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 180
+ *     responses:
+ *       200:
+ *         description: Reports archived successfully
+ *       403:
+ *         description: Forbidden
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/reports',
   authGuard,
   validate({ body: archiveReportsSchema }),
-  logAction('ARCHIVE', 'reports'),
+  auditLogger('ARCHIVE', 'reports'),
   async (req: AuthRequest, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -246,8 +356,8 @@ router.post(
         message: `Archived ${count} reports`,
         count,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );
@@ -260,12 +370,51 @@ router.post(
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ordersOlderThanDays:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 365
+ *               transactionsOlderThanDays:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 365
+ *               reportsOlderThanDays:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 180
+ *     responses:
+ *       200:
+ *         description: All data archived successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 ordersArchived:
+ *                   type: integer
+ *                 transactionsArchived:
+ *                   type: integer
+ *                 reportsArchived:
+ *                   type: integer
+ *       403:
+ *         description: Forbidden
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/all',
   authGuard,
   validate({ body: archiveAllSchema }),
-  logAction('ARCHIVE', 'all'),
+  auditLogger('ARCHIVE', 'all'),
   async (req: AuthRequest, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -280,8 +429,8 @@ router.post(
         message: 'Archived all old data',
         ...result,
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );
@@ -294,12 +443,41 @@ router.post(
  *     tags: [Archives]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - archiveFile
+ *             properties:
+ *               archiveFile:
+ *                 type: string
+ *                 minLength: 1
+ *                 description: Path to archive file to restore
+ *     responses:
+ *       200:
+ *         description: Archive restored successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: Forbidden - Only admin can restore or archive file doesn't belong to tenant
+ *       404:
+ *         description: Archive file not found
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/restore',
   authGuard,
   validate({ body: restoreArchiveSchema }),
-  logAction('RESTORE', 'archives'),
+  auditLogger('RESTORE', 'archives'),
   async (req: AuthRequest, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -319,8 +497,8 @@ router.post(
       res.json({
         message: 'Archive restored successfully',
       });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ARCHIVE');
     }
   }
 );

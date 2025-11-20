@@ -4,7 +4,7 @@ import employeeService from '../services/employee.service';
 import { validate } from '../middlewares/validator';
 import { z } from 'zod';
 import { requireTenantId } from '../utils/tenant';
-import { logAction } from '../middlewares/audit-logger';
+import { auditLogger } from '../middlewares/audit-logger';
 
 const router = Router();
 
@@ -77,7 +77,7 @@ router.post(
   '/',
   authGuard,
   validate({ body: createEmployeeSchema }),
-  logAction('CREATE', 'employees'),
+  auditLogger('CREATE', 'employees'),
   async (req: Request, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -97,7 +97,7 @@ router.put(
   '/:id',
   authGuard,
   validate({ body: updateEmployeeSchema }),
-  logAction('UPDATE', 'employees'),
+  auditLogger('UPDATE', 'employees'),
   async (req: Request, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
@@ -119,7 +119,7 @@ router.put(
 router.delete(
   '/:id',
   authGuard,
-  logAction('DELETE', 'employees'),
+  auditLogger('DELETE', 'employees'),
   async (req: Request, res: Response) => {
     try {
       const tenantId = requireTenantId(req);
