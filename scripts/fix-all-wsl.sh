@@ -36,40 +36,52 @@ else
 fi
 echo ""
 
+# Check if we need sudo for docker
+DOCKER_CMD="docker"
+if ! docker ps &>/dev/null; then
+    if sudo docker ps &>/dev/null; then
+        DOCKER_CMD="sudo docker"
+        echo "   Using sudo for docker commands"
+    else
+        echo "   ⚠️  Cannot access Docker. Please check Docker daemon."
+        exit 1
+    fi
+fi
+
 # 3. Rebuild backend
 echo "🔨 [3/7] Rebuilding backend..."
-docker compose build backend
+$DOCKER_CMD compose build backend
 echo "   ✅ Backend rebuilt"
 echo ""
 
 # 4. Create super admin
 echo "👤 [4/7] Creating/updating super admin..."
-docker compose exec -T backend node scripts/create-super-admin-docker.js || echo "   ⚠️  Super admin may already exist"
+$DOCKER_CMD compose exec -T backend node scripts/create-super-admin-docker.js || echo "   ⚠️  Super admin may already exist"
 echo ""
 
 # 5. Restart backend
 echo "🔄 [5/7] Restarting backend..."
-docker compose restart backend
+$DOCKER_CMD compose restart backend
 sleep 5
 echo "   ✅ Backend restarted"
 echo ""
 
 # 6. Rebuild frontend (fix 404 assets)
 echo "🎨 [6/7] Rebuilding frontend..."
-docker compose build frontend
-docker compose up -d frontend
+$DOCKER_CMD compose build frontend
+$DOCKER_CMD compose up -d frontend
 echo "   ✅ Frontend rebuilt"
 echo ""
 
 # 7. Restart nginx
 echo "🌐 [7/7] Restarting nginx..."
-docker compose restart nginx
+$DOCKER_CMD compose restart nginx
 echo "   ✅ Nginx restarted"
 echo ""
 
 # Check status
 echo "📊 Deployment Status:"
-docker compose ps
+$DOCKER_CMD compose ps
 echo ""
 
 echo "✅ All fixes applied!"
