@@ -57,11 +57,12 @@ export function handleRouteError(
       err.message?.includes('connection') ||
       err.message?.includes('Database connection error') ||
       err.message?.includes('connect ECONNREFUSED')) {
-    return res.status(503).json({
+    res.status(503).json({
       error: 'DATABASE_CONNECTION_ERROR',
       message: 'Database connection failed. Please try again later.',
       code: err.code,
     });
+    return;
   }
 
   // Handle Prisma errors
@@ -69,45 +70,50 @@ export function handleRouteError(
     switch (err.code) {
       case 'P2002':
         // Unique constraint violation
-        return res.status(409).json({
+        res.status(409).json({
           error: 'DUPLICATE_ENTRY',
           message: 'A record with this information already exists.',
           code: err.code,
         });
+        return;
       case 'P2025':
         // Record not found
-        return res.status(404).json({
+        res.status(404).json({
           error: 'NOT_FOUND',
           message: 'The requested record could not be found.',
           code: err.code,
         });
+        return;
       case 'P2003':
         // Foreign key constraint failed
-        return res.status(400).json({
+        res.status(400).json({
           error: 'FOREIGN_KEY_CONSTRAINT',
           message: 'Invalid reference to related record.',
           code: err.code,
         });
+        return;
       default:
         // Other Prisma errors
-        return res.status(500).json({
+        res.status(500).json({
           error: 'DATABASE_ERROR',
           message: process.env.NODE_ENV === 'production'
             ? 'A database error occurred. Please try again.'
             : err.message,
           code: err.code,
         });
+        return;
     }
   }
 
   // Handle Prisma validation errors
   if (error instanceof Prisma.PrismaClientValidationError) {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'VALIDATION_ERROR',
       message: process.env.NODE_ENV === 'production'
         ? 'The provided data is invalid.'
         : err.message,
     });
+    return;
   }
 
   // Handle validation errors (400 Bad Request)
@@ -115,20 +121,22 @@ export function handleRouteError(
       err.message?.includes('Tenant ID') ||
       err.message?.includes('Invalid') ||
       err.name === 'ZodError') {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'VALIDATION_ERROR',
       message: err.message || 'Invalid request',
     });
+    return;
   }
 
   // Handle not found errors (404 Not Found)
   if (err.message?.includes('not found') ||
       err.message?.includes('Not Found') ||
       err.message?.includes('does not exist')) {
-    return res.status(404).json({
+    res.status(404).json({
       error: 'NOT_FOUND',
       message: err.message || 'Resource not found',
     });
+    return;
   }
 
   // Handle unauthorized/forbidden errors (401/403)
@@ -138,23 +146,25 @@ export function handleRouteError(
       err.statusCode === 401 ||
       err.statusCode === 403) {
     const statusCode = err.statusCode || 403;
-    return res.status(statusCode).json({
+    res.status(statusCode).json({
       error: statusCode === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
       message: err.message || 'Access denied',
     });
+    return;
   }
 
   // Handle custom status codes
   if (err.statusCode && err.statusCode >= 400 && err.statusCode < 600) {
-    return res.status(err.statusCode).json({
+    res.status(err.statusCode).json({
       error: err.name || 'ERROR',
       message: err.message || defaultMessage,
     });
+    return;
   }
 
   // Default to 500 for unknown errors
   const isDevelopment = process.env.NODE_ENV === 'development';
-  return res.status(500).json({
+  res.status(500).json({
     error: 'INTERNAL_SERVER_ERROR',
     message: isDevelopment
       ? err.message || defaultMessage
