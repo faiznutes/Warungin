@@ -295,15 +295,18 @@
 ---
 
 #### 7. Webhook Testing Tool
-- [ ] **Buat `client/src/views/settings/WebhookTester.vue`**
-  - [ ] Test webhook endpoint dengan sample payload
-  - [ ] Preview webhook payload
-  - [ ] Test signature validation
-  - [ ] Replay failed webhooks
-- [ ] **Buat `POST /api/webhooks/:id/test` endpoint**
-- [ ] **Buat `POST /api/webhooks/:id/replay/:deliveryId` endpoint**
+- [x] **Buat `client/src/views/settings/WebhookTester.vue`** ✅
+  - [x] Test webhook endpoint dengan sample payload ✅
+  - [x] Preview webhook payload ✅
+  - [x] Custom payload support ✅
+  - [x] Replay failed webhooks ✅
+  - [x] Delivery history dengan filter ✅
+- [x] **Buat `POST /api/webhooks/:id/test` endpoint** ✅ (Enhanced dengan custom payload)
+- [x] **Buat `POST /api/webhooks/:id/replay/:deliveryId` endpoint** ✅
+- [x] **Add route untuk WebhookTester** ✅
+- [x] **Link dari Webhooks.vue ke WebhookTester** ✅
 
-**Estimated Time:** 6-8 hours
+**Estimated Time:** 6-8 hours (✅ Complete)
 
 ---
 

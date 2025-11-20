@@ -251,6 +251,12 @@ const router = createRouter({
           meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
         },
         {
+          path: 'settings/webhooks/tester',
+          name: 'webhook-tester',
+          component: () => import('../views/settings/WebhookTester.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
           path: 'settings/sessions',
           name: 'sessions',
           component: () => import('../views/settings/Sessions.vue'),

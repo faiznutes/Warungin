@@ -272,17 +272,22 @@ export class WebhookService {
   /**
    * Get webhook deliveries
    */
-  async getDeliveries(webhookId: string, page: number = 1, limit: number = 50): Promise<any> {
+  async getDeliveries(webhookId: string, page: number = 1, limit: number = 50, status?: string): Promise<any> {
     const skip = (page - 1) * limit;
+
+    const where: any = { webhookId };
+    if (status) {
+      where.status = status;
+    }
 
     const [deliveries, total] = await Promise.all([
       prisma.webhookDelivery.findMany({
-        where: { webhookId },
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.webhookDelivery.count({ where: { webhookId } }),
+      prisma.webhookDelivery.count({ where }),
     ]);
 
     return {
@@ -294,6 +299,42 @@ export class WebhookService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Replay failed webhook delivery
+   */
+  async replayDelivery(webhookId: string, deliveryId: string, tenantId: string): Promise<void> {
+    // Verify webhook belongs to tenant
+    const webhook = await prisma.webhook.findFirst({
+      where: { id: webhookId, tenantId },
+    });
+
+    if (!webhook) {
+      throw new Error('Webhook not found');
+    }
+
+    // Get delivery
+    const delivery = await prisma.webhookDelivery.findFirst({
+      where: { id: deliveryId, webhookId },
+    });
+
+    if (!delivery) {
+      throw new Error('Delivery not found');
+    }
+
+    // Reset delivery status and retry
+    await prisma.webhookDelivery.update({
+      where: { id: deliveryId },
+      data: {
+        status: 'PENDING',
+        attempts: 0,
+        nextRetryAt: new Date(),
+      },
+    });
+
+    // Attempt delivery again
+    await this.attemptDelivery(deliveryId, webhook);
   }
 }
 

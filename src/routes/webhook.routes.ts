@@ -146,8 +146,9 @@ router.get(
       const { id } = req.params;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
+      const status = req.query.status as string | undefined;
 
-      const result = await webhookService.getDeliveries(id, page, limit);
+      const result = await webhookService.getDeliveries(id, page, limit, status);
 
       res.json(result);
     } catch (error: any) {
@@ -173,6 +174,7 @@ router.post(
     try {
       const tenantId = requireTenantId(req);
       const { id } = req.params;
+      const customPayload = req.body.payload; // Optional custom payload
 
       // Get webhook to verify it exists and belongs to tenant
       const webhook = await prisma.webhook.findFirst({
@@ -183,17 +185,51 @@ router.post(
         return res.status(404).json({ message: 'Webhook not found' });
       }
 
-      // Trigger test webhook with sample payload (target specific webhook)
-      await webhookService.triggerWebhook(tenantId, 'test.event', {
+      // Use custom payload if provided, otherwise use default test payload
+      const payload = customPayload || {
         test: true,
         message: 'This is a test webhook',
         timestamp: new Date().toISOString(),
         webhookId: id,
-      }, id);
+      };
+
+      // Trigger test webhook with sample payload (target specific webhook)
+      await webhookService.triggerWebhook(tenantId, req.body.event || 'test.event', payload, id);
 
       res.json({ message: 'Test webhook triggered successfully' });
     } catch (error: any) {
       logger.error('Error testing webhook', { error: error.message, webhookId: req.params.id });
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/webhooks/{id}/replay/{deliveryId}:
+ *   post:
+ *     summary: Replay failed webhook delivery
+ *     tags: [Webhooks]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  '/:id/replay/:deliveryId',
+  authGuard,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const tenantId = requireTenantId(req);
+      const { id, deliveryId } = req.params;
+
+      await webhookService.replayDelivery(id, deliveryId, tenantId);
+
+      res.json({ message: 'Webhook delivery replayed successfully' });
+    } catch (error: any) {
+      logger.error('Error replaying webhook delivery', { 
+        error: error.message, 
+        webhookId: req.params.id,
+        deliveryId: req.params.deliveryId 
+      });
       res.status(500).json({ message: error.message });
     }
   }

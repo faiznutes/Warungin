@@ -85,6 +85,12 @@
           </div>
 
           <div class="flex space-x-2 ml-4">
+            <router-link
+              :to="`/app/settings/webhooks/tester?webhookId=${webhook.id}`"
+              class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-sm"
+            >
+              Tester
+            </router-link>
             <button
               @click="testWebhook(webhook.id)"
               class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
