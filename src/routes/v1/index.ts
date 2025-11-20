@@ -8,6 +8,7 @@ import authRoutes from '../auth.routes';
 import tenantRoutes from '../tenant.routes';
 import productRoutes from '../product.routes';
 import orderRoutes from '../order.routes';
+import archiveRoutes from '../archive.routes';
 // Import other routes as needed
 
 const router = Router();
@@ -17,6 +18,7 @@ router.use('/auth', authRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/products', productRoutes);
 router.use('/orders', orderRoutes);
+router.use('/archives', archiveRoutes);
 // Add other routes...
 
 export default router;

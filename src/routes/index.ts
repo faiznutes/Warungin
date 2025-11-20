@@ -35,6 +35,7 @@ import webhookRoutes from './webhook.routes';
 import metricsRoutes from './metrics.routes';
 import gdprRoutes from './gdpr.routes';
 import employeeRoutes from './employee.routes';
+import archiveRoutes from './archive.routes';
 
 const router = Router();
 
@@ -86,6 +87,7 @@ router.use('/webhooks', webhookRoutes);
 router.use('/metrics', metricsRoutes);
 router.use('/gdpr', gdprRoutes);
 router.use('/employees', employeeRoutes);
+router.use('/archives', archiveRoutes);
 // etc.
 
 export default router;
