@@ -8,7 +8,7 @@ import { z } from 'zod';
 import prisma from '../config/database';
 import logger from '../utils/logger';
 import { AuthRequest } from '../middlewares/auth';
-import { logAction } from '../middlewares/audit-logger';
+import { auditLogger } from '../middlewares/audit-logger';
 
 const router = Router();
 
@@ -41,8 +41,12 @@ function logRouteError(error: unknown, context: string, req: any) {
 router.post(
   '/',
   authGuard,
-  require2FA, // Require 2FA for admin roles when creating tenants
+  require2FA, // Require 2FA for admin roles when creating tenants (SUPER_ADMIN can bypass)
   validate({ body: createTenantSchema }),
+  auditLogger('CREATE', 'tenants', (req) => {
+    // Get tenant ID from response if available
+    return (req as any).createdTenantId || null;
+  }),
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
@@ -59,43 +63,69 @@ router.post(
 
       const result = await tenantService.createTenant(req.body);
       
-      // Log audit
-      await logAction(
-        authReq,
-        'CREATE',
-        'tenants',
-        result.tenant.id,
-        { name: result.tenant.name, email: result.tenant.email },
-        'SUCCESS'
-      );
+      // Store tenant ID for audit logger
+      (req as any).createdTenantId = result.tenant.id;
       
       res.status(201).json(result);
     } catch (error: unknown) {
-      const err = error as Error & { statusCode?: number; message?: string; code?: string };
+      const err = error as Error & { 
+        statusCode?: number; 
+        message?: string; 
+        code?: string;
+        issues?: Array<{ path: (string | number)[]; message: string }>;
+      };
+      
       logRouteError(error, 'CREATE_TENANT', req);
       
-      const statusCode = err.statusCode || 500;
-      const message = err.message || 'Gagal membuat tenant';
+      // Handle validation errors (Zod)
+      if (err.name === 'ZodError' || err.issues) {
+        const issues = err.issues || [];
+        return res.status(400).json({
+          error: 'VALIDATION_ERROR',
+          message: 'Data tidak valid',
+          issues: issues.map((issue: any) => ({
+            path: issue.path,
+            message: issue.message,
+          })),
+        });
+      }
+      
+      // Handle AppError with statusCode
+      if (err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
+        return res.status(err.statusCode).json({
+          error: err.name || 'ERROR',
+          message: err.message || 'Gagal membuat tenant',
+        });
+      }
       
       // Handle database errors
       if (err.code?.startsWith('P')) {
         if (err.code === 'P1001' || err.code === 'P1002' || err.message?.includes('connect')) {
-          res.status(503).json({ 
+          return res.status(503).json({ 
             message: 'Database connection failed. Please try again.',
             error: 'DATABASE_CONNECTION_ERROR',
           });
+        } else if (err.code === 'P2002') {
+          return res.status(409).json({
+            message: 'Tenant dengan email ini sudah ada',
+            error: 'DUPLICATE_ENTRY',
+          });
         } else {
-          res.status(500).json({ 
+          return res.status(500).json({ 
             message: 'Database error occurred',
             error: err.code,
           });
         }
-        return;
       }
       
+      // Default error
+      const statusCode = err.statusCode || 500;
+      const message = err.message || 'Gagal membuat tenant';
+      
       res.status(statusCode).json({ 
+        error: err.name || 'ERROR',
         message,
-        error: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
       });
     }
   }

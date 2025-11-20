@@ -37,6 +37,30 @@ export const require2FA = async (
       return next();
     }
 
+    // SUPER_ADMIN can bypass 2FA requirement (for initial setup)
+    if (role === 'SUPER_ADMIN') {
+      // Check if 2FA is enabled, but don't block if not
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          twoFactorEnabled: true,
+        } as any,
+      });
+
+      if (user && (user as any).twoFactorEnabled) {
+        // 2FA is enabled, continue normally
+        return next();
+      } else {
+        // 2FA not enabled for SUPER_ADMIN - allow but log warning
+        logger.info('Super Admin accessing without 2FA (allowed)', {
+          userId,
+          path: req.path,
+        });
+        return next();
+      }
+    }
+
+    // For ADMIN_TENANT, require 2FA
     // Get user's 2FA status
     const user = await prisma.user.findUnique({
       where: { id: userId },
