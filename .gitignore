@@ -68,7 +68,7 @@ coverage/
 
 # Docker
 docker-compose.override.yml
-.dockerignore
+# .dockerignore - Keep this file, it's needed for Docker builds
 
 # SSL Certificates
 *.pem
