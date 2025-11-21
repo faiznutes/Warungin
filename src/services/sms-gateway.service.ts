@@ -75,8 +75,12 @@ class SMSGatewayService {
 
     try {
       // Dynamic import Twilio client
-      // @ts-ignore - Optional dependency
-      const twilio = await import('twilio');
+      let twilio: typeof import('twilio');
+      try {
+        twilio = await import('twilio');
+      } catch (importError) {
+        throw new Error('twilio package is not installed. Install it with: npm install twilio');
+      }
       const client = twilio.default(this.config.accountSid, this.config.authToken);
 
       const response = await client.messages.create({
@@ -199,8 +203,12 @@ class SMSGatewayService {
     }
 
     try {
-      // @ts-ignore - Optional dependency
-      const twilio = await import('twilio');
+      let twilio: typeof import('twilio');
+      try {
+        twilio = await import('twilio');
+      } catch (importError) {
+        throw new Error('twilio package is not installed. Install it with: npm install twilio');
+      }
       const client = twilio.default(this.config.accountSid, this.config.authToken);
       
       const message = await client.messages(messageId).fetch();
@@ -259,8 +267,12 @@ class SMSGatewayService {
     }
 
     try {
-      // @ts-ignore - Optional dependency
-      const twilio = await import('twilio');
+      let twilio: typeof import('twilio');
+      try {
+        twilio = await import('twilio');
+      } catch (importError) {
+        throw new Error('twilio package is not installed. Install it with: npm install twilio');
+      }
       const client = twilio.default(this.config.accountSid, this.config.authToken);
       
       const account = await client.api.accounts(this.config.accountSid).fetch();

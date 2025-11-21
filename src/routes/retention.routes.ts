@@ -63,7 +63,7 @@ const applyAllRetentionSchema = z.object({
 router.get(
   '/stats',
   authGuard,
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const tenantId = requireTenantId(req);
       const policy = req.query.policy ? JSON.parse(req.query.policy as string) : undefined;
@@ -116,14 +116,15 @@ router.post(
   '/orders',
   authGuard,
   validate({ body: applyRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const tenantId = requireTenantId(req);
       const { days = 365 } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const deletedCount = await retentionService.applyOrdersRetention(tenantId, days);
@@ -170,14 +171,15 @@ router.post(
   '/transactions',
   authGuard,
   validate({ body: applyRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const tenantId = requireTenantId(req);
       const { days = 365 } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const deletedCount = await retentionService.applyTransactionsRetention(tenantId, days);
@@ -224,14 +226,15 @@ router.post(
   '/reports',
   authGuard,
   validate({ body: applyRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const tenantId = requireTenantId(req);
       const { days = 180 } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const deletedCount = await retentionService.applyReportsRetention(tenantId, days);
@@ -276,14 +279,15 @@ router.post(
   '/audit-logs',
   authGuard,
   validate({ body: applyRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const tenantId = requireTenantId(req);
       const { days = 90 } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const deletedCount = await retentionService.applyAuditLogsRetention(tenantId, days);
@@ -328,13 +332,14 @@ router.post(
   '/contact-submissions',
   authGuard,
   validate({ body: applyRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { days = 90 } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const deletedCount = await retentionService.applyContactSubmissionsRetention(days);
@@ -379,13 +384,14 @@ router.post(
   '/demo-requests',
   authGuard,
   validate({ body: applyRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { days = 90 } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const deletedCount = await retentionService.applyDemoRequestsRetention(days);
@@ -447,14 +453,15 @@ router.post(
   '/all',
   authGuard,
   validate({ body: applyAllRetentionSchema }),
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const tenantId = requireTenantId(req);
       const { policy } = req.body;
       
       // Only ADMIN_TENANT and SUPER_ADMIN can apply retention
       if (req.role !== 'ADMIN_TENANT' && req.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        res.status(403).json({ message: 'Only tenant admin or super admin can apply retention policies' });
+        return;
       }
 
       const result = await retentionService.applyAllRetentionPolicies(tenantId, policy);

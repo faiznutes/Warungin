@@ -77,8 +77,12 @@ class PushNotificationService {
 
     try {
       // Dynamic import Firebase Admin SDK
-      // @ts-ignore - Optional dependency
-      const admin = await import('firebase-admin');
+      let admin: typeof import('firebase-admin');
+      try {
+        admin = await import('firebase-admin');
+      } catch (importError) {
+        throw new Error('firebase-admin package is not installed. Install it with: npm install firebase-admin');
+      }
       
       // Initialize Firebase Admin if not already initialized
       if (!admin.apps.length) {
@@ -112,6 +116,10 @@ class PushNotificationService {
         tokens,
       };
 
+      if (!admin.messaging) {
+        throw new Error('Firebase Admin messaging is not available. Please check your Firebase configuration.');
+      }
+      
       const response = await admin.messaging().sendEachForMulticast(message);
 
       if (response.successCount > 0) {

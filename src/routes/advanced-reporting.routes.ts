@@ -61,7 +61,7 @@ router.post(
       name: z.string().min(1),
       description: z.string().optional(),
       type: z.string(),
-      config: z.any(),
+      config: z.unknown(), // Use z.unknown() instead of deprecated z.any()
     }),
   }),
   async (req: Request, res: Response) => {
@@ -162,7 +162,7 @@ router.post(
     body: z.object({
       templateId: z.string(),
       schedule: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM']),
-      scheduleConfig: z.any().optional(),
+      scheduleConfig: z.unknown().optional(), // Use z.unknown() instead of deprecated z.any()
       recipients: z.array(z.string().email()),
       format: z.enum(['PDF', 'EXCEL', 'CSV', 'HTML']),
     }),
