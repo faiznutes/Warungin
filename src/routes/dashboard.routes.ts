@@ -16,6 +16,38 @@ const router = Router();
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: tenantId
+ *         schema:
+ *           type: string
+ *         description: Tenant ID (required for SUPER_ADMIN)
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalSales:
+ *                   type: number
+ *                 totalOrders:
+ *                   type: integer
+ *                 totalCustomers:
+ *                   type: integer
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/stats',

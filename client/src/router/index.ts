@@ -215,6 +215,76 @@ const router = createRouter({
           meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'], requiresAddon: 'DELIVERY_MARKETING' },
         },
         {
+          path: 'marketing/email-templates',
+          name: 'email-templates',
+          component: () => import('../views/marketing/EmailTemplates.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'], requiresAddon: 'DELIVERY_MARKETING' },
+        },
+        {
+          path: 'marketing/email-analytics',
+          name: 'email-analytics',
+          component: () => import('../views/marketing/EmailAnalytics.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'], requiresAddon: 'DELIVERY_MARKETING' },
+        },
+        {
+          path: 'marketing/email-scheduler',
+          name: 'email-scheduler',
+          component: () => import('../views/marketing/EmailScheduler.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'], requiresAddon: 'DELIVERY_MARKETING' },
+        },
+        {
+          path: 'marketing/customer-engagement',
+          name: 'customer-engagement',
+          component: () => import('../views/marketing/CustomerEngagement.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'], requiresAddon: 'DELIVERY_MARKETING' },
+        },
+        // Inventory Management
+        {
+          path: 'inventory/suppliers',
+          name: 'suppliers',
+          component: () => import('../views/inventory/Suppliers.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
+          path: 'inventory/purchase-orders',
+          name: 'purchase-orders',
+          component: () => import('../views/inventory/PurchaseOrders.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
+          path: 'inventory/stock-transfers',
+          name: 'stock-transfers',
+          component: () => import('../views/inventory/StockTransfers.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
+          path: 'inventory/stock-alerts',
+          name: 'stock-alerts',
+          component: () => import('../views/inventory/StockAlerts.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        // Advanced Reporting
+        {
+          path: 'reports/advanced',
+          name: 'advanced-reporting',
+          component: () => import('../views/reports/AdvancedReporting.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPERVISOR', 'SUPER_ADMIN'], requiresAddon: 'BUSINESS_ANALYTICS' },
+        },
+        // Financial Management Enhancement
+        {
+          path: 'finance/management',
+          name: 'financial-management',
+          component: () => import('../views/finance/FinancialManagement.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPERVISOR', 'SUPER_ADMIN'], requiresAddon: 'BUSINESS_ANALYTICS' },
+        },
+        // AI/ML Features
+        {
+          path: 'ai-ml',
+          name: 'ai-ml-features',
+          component: () => import('../views/ai-ml/AIMLFeatures.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPERVISOR', 'SUPER_ADMIN'], requiresAddon: 'BUSINESS_ANALYTICS' },
+        },
+        {
           path: 'analytics',
           name: 'analytics',
           component: () => import('../views/analytics/AdvancedAnalytics.vue'),
@@ -278,6 +348,12 @@ const router = createRouter({
           path: 'settings/archive',
           name: 'archive-management',
           component: () => import('../views/settings/ArchiveManagement.vue'),
+          meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
+        },
+        {
+          path: 'settings/retention',
+          name: 'retention-management',
+          component: () => import('../views/settings/RetentionManagement.vue'),
           meta: { roles: ['ADMIN_TENANT', 'SUPER_ADMIN'] },
         },
         {

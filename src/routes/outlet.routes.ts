@@ -5,6 +5,7 @@ import outletService from '../services/outlet.service';
 import { validate } from '../middlewares/validator';
 import { requireTenantId } from '../utils/tenant';
 import { z } from 'zod';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -22,8 +23,27 @@ const updateOutletSchema = z.object({
 });
 
 /**
- * GET /api/outlets
- * Get all outlets for current tenant
+ * @swagger
+ * /api/outlets:
+ *   get:
+ *     summary: Get all outlets for current tenant
+ *     tags: [Outlets]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of outlets
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Outlet'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/',
@@ -34,15 +54,41 @@ router.get(
       const tenantId = requireTenantId(req);
       const outlets = await outletService.getOutlets(tenantId);
       res.json({ data: outlets });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to get outlets', 'GET_OUTLETS');
     }
   }
 );
 
 /**
- * GET /api/outlets/:id
- * Get outlet by ID
+ * @swagger
+ * /api/outlets/{id}:
+ *   get:
+ *     summary: Get outlet by ID
+ *     tags: [Outlets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Outlet ID
+ *     responses:
+ *       200:
+ *         description: Outlet details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Outlet'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/:id',
@@ -53,15 +99,52 @@ router.get(
       const tenantId = requireTenantId(req);
       const outlet = await outletService.getOutlet(tenantId, req.params.id);
       res.json({ data: outlet });
-    } catch (error: any) {
-      res.status(404).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to get outlet', 'GET_OUTLET');
     }
   }
 );
 
 /**
- * POST /api/outlets
- * Create new outlet
+ * @swagger
+ * /api/outlets:
+ *   post:
+ *     summary: Create new outlet
+ *     tags: [Outlets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Outlet Pusat
+ *               address:
+ *                 type: string
+ *                 example: "Jl. Raya No. 123"
+ *               phone:
+ *                 type: string
+ *                 example: "081234567890"
+ *     responses:
+ *       201:
+ *         description: Outlet created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Outlet'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/',
@@ -73,15 +156,56 @@ router.post(
       const tenantId = requireTenantId(req);
       const outlet = await outletService.createOutlet(tenantId, req.body);
       res.status(201).json({ data: outlet });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'OUTLET');
     }
   }
 );
 
 /**
- * PUT /api/outlets/:id
- * Update outlet
+ * @swagger
+ * /api/outlets/{id}:
+ *   put:
+ *     summary: Update outlet
+ *     tags: [Outlets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Outlet ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Outlet updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Outlet'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.put(
   '/:id',
@@ -93,15 +217,42 @@ router.put(
       const tenantId = requireTenantId(req);
       const outlet = await outletService.updateOutlet(tenantId, req.params.id, req.body);
       res.json({ data: outlet });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'OUTLET');
     }
   }
 );
 
 /**
- * DELETE /api/outlets/:id
- * Delete outlet (soft delete if has orders)
+ * @swagger
+ * /api/outlets/{id}:
+ *   delete:
+ *     summary: Delete outlet (soft delete if has orders)
+ *     tags: [Outlets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Outlet ID
+ *     responses:
+ *       200:
+ *         description: Outlet deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Outlet berhasil dihapus"
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.delete(
   '/:id',
@@ -112,8 +263,8 @@ router.delete(
       const tenantId = requireTenantId(req);
       await outletService.deleteOutlet(tenantId, req.params.id);
       res.json({ message: 'Outlet berhasil dihapus' });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'OUTLET');
     }
   }
 );

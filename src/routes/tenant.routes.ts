@@ -85,13 +85,14 @@ router.post(
       logRouteError(error, 'CREATE_TENANT', req);
       
       // Handle validation errors (Zod)
-      if (err.name === 'ZodError' || err.issues) {
-        const issues = err.issues || [];
+      // Note: Validator middleware should catch this first, but handle here as fallback
+      if (err.name === 'ZodError' || err.issues || (err as any).errors) {
+        const issues = err.issues || (err as any).errors || [];
         return res.status(400).json({
           error: 'VALIDATION_ERROR',
-          message: 'Data tidak valid',
-          issues: issues.map((issue: any) => ({
-            path: issue.path,
+          message: 'Data tidak valid. Silakan periksa field yang diisi.',
+          errors: issues.map((issue: any) => ({
+            path: Array.isArray(issue.path) ? issue.path.join('.') : (issue.path || 'unknown'),
             message: issue.message,
           })),
         });

@@ -6,6 +6,44 @@ import { checkBusinessAnalyticsAddon } from '../middlewares/addon-guard';
 
 const router = Router();
 
+/**
+ * @swagger
+ * /api/finance/summary:
+ *   get:
+ *     summary: Get financial summary
+ *     tags: [Finance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for summary
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for summary
+ *     responses:
+ *       200:
+ *         description: Financial summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalRevenue:
+ *                   type: number
+ *                 totalExpenses:
+ *                   type: number
+ *                 netProfit:
+ *                   type: number
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.get(
   '/summary',
   authGuard,
@@ -22,6 +60,55 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /api/finance/profit-loss:
+ *   get:
+ *     summary: Get profit and loss statement
+ *     tags: [Finance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for profit-loss statement
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for profit-loss statement
+ *       - in: query
+ *         name: export
+ *         schema:
+ *           type: boolean
+ *         description: Export as PDF if true
+ *     responses:
+ *       200:
+ *         description: Profit and loss statement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 revenue:
+ *                   type: number
+ *                 expenses:
+ *                   type: number
+ *                 profit:
+ *                   type: number
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Business Analytics addon required
+ */
 router.get(
   '/profit-loss',
   authGuard,
@@ -96,6 +183,44 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /api/finance/balance-sheet:
+ *   get:
+ *     summary: Get balance sheet
+ *     tags: [Finance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for balance sheet
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for balance sheet
+ *     responses:
+ *       200:
+ *         description: Balance sheet data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 assets:
+ *                   type: number
+ *                 liabilities:
+ *                   type: number
+ *                 equity:
+ *                   type: number
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.get(
   '/balance-sheet',
   authGuard,
@@ -112,6 +237,46 @@ router.get(
   }
 );
 
+/**
+ * @swagger
+ * /api/finance/cash-flow:
+ *   get:
+ *     summary: Get cash flow statement
+ *     tags: [Finance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for cash flow statement
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for cash flow statement
+ *     responses:
+ *       200:
+ *         description: Cash flow statement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 operating:
+ *                   type: number
+ *                 investing:
+ *                   type: number
+ *                 financing:
+ *                   type: number
+ *                 netCashFlow:
+ *                   type: number
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.get(
   '/cash-flow',
   authGuard,

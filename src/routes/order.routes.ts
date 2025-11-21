@@ -6,6 +6,7 @@ import { createOrderSchema, updateOrderStatusSchema, getOrdersQuerySchema, updat
 import { validate } from '../middlewares/validator';
 import { requireTenantId } from '../utils/tenant';
 import { z } from 'zod';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -17,6 +18,38 @@ const router = Router();
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, PROCESSING, COMPLETED, CANCELLED]
+ *     responses:
+ *       200:
+ *         description: List of orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/',
@@ -29,8 +62,8 @@ router.get(
       const userRole = (req as any).user.role;
       const result = await orderService.getOrders(tenantId, req.query as any, userRole);
       res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -59,20 +92,45 @@ router.put(
       
       const results = await orderService.bulkUpdateKitchenStatus(tenantId, orderIds, status);
       res.json(results);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
 
 /**
  * @swagger
- * /api/orders/stats:
+ * /api/orders/stats/summary:
  *   get:
  *     summary: Get order statistics
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *         description: Start date for statistics
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *         description: End date for statistics
+ *     responses:
+ *       200:
+ *         description: Order statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalOrders:
+ *                   type: integer
+ *                 totalRevenue:
+ *                   type: number
+ *                 averageOrderValue:
+ *                   type: number
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/stats/summary',
@@ -87,8 +145,8 @@ router.get(
         endDate ? new Date(endDate as string) : undefined
       );
       res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -101,6 +159,23 @@ router.get(
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/:id',
@@ -113,8 +188,8 @@ router.get(
         return res.status(404).json({ message: 'Order not found' });
       }
       res.json(order);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -127,6 +202,42 @@ router.get(
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - items
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - productId
+ *                     - quantity
+ *                   properties:
+ *                     productId:
+ *                       type: string
+ *                     quantity:
+ *                       type: integer
+ *               customerId:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Order created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/',
@@ -139,8 +250,8 @@ router.post(
       const userId = (req as any).user.id;
       const order = await orderService.createOrder(req.body, userId, tenantId);
       res.status(201).json(order);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to create order', 'CREATE_ORDER');
     }
   }
 );
@@ -153,6 +264,37 @@ router.post(
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Order ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [PENDING, PROCESSING, COMPLETED, CANCELLED]
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Order'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.put(
   '/:id',
@@ -169,11 +311,8 @@ router.put(
       // Pass all validated data to updateOrder service
       const updatedOrder = await orderService.updateOrder(req.params.id, req.body, tenantId);
       res.json(updatedOrder);
-    } catch (error: any) {
-      if (error.message === 'Order not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -196,11 +335,8 @@ router.put(
       const tenantId = requireTenantId(req);
       const order = await orderService.updateOrderStatus(req.params.id, req.body, tenantId);
       res.json(order);
-    } catch (error: any) {
-      if (error.message === 'Order not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -236,8 +372,8 @@ router.put(
         kitchenStatus: req.body.status,
       }, tenantId);
       res.json(updatedOrder);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -269,8 +405,8 @@ router.post(
       const { orderIds } = req.body;
       const result = await orderService.bulkDeleteOrders(tenantId, orderIds);
       res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -302,8 +438,8 @@ router.post(
       const { orderIds } = req.body;
       const result = await orderService.bulkRefundOrders(tenantId, orderIds);
       res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );
@@ -333,11 +469,8 @@ router.delete(
 
       await orderService.deleteOrder(req.params.id, tenantId);
       res.status(204).send();
-    } catch (error: any) {
-      if (error.message === 'Order not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'ORDER');
     }
   }
 );

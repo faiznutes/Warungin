@@ -5,6 +5,7 @@ import transactionService from '../services/transaction.service';
 import { requireTenantId } from '../utils/tenant';
 import { z } from 'zod';
 import { validate } from '../middlewares/validator';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -28,6 +29,50 @@ const createTransactionSchema = z.object({
  *     tags: [Transactions]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *               - amount
+ *               - paymentMethod
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *               amount:
+ *                 type: number
+ *                 minimum: 0
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [CASH, QRIS, BANK_TRANSFER, SHOPEEPAY, DANA, CARD, E_WALLET]
+ *               status:
+ *                 type: string
+ *                 enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+ *               reference:
+ *                 type: string
+ *               qrCode:
+ *                 type: string
+ *               qrCodeImage:
+ *                 type: string
+ *                 format: uri
+ *               notes:
+ *                 type: string
+ *               servedBy:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Transaction created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Transaction'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/',
@@ -46,9 +91,8 @@ router.post(
       );
       
       res.status(201).json(transaction);
-    } catch (error: any) {
-      console.error('Transaction creation error:', error);
-      res.status(400).json({ message: error.message || 'Failed to create transaction' });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to create transaction', 'CREATE_TRANSACTION');
     }
   }
 );
@@ -61,6 +105,35 @@ router.post(
  *     tags: [Transactions]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: List of transactions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Transaction'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/',
@@ -74,9 +147,8 @@ router.get(
       
       const result = await transactionService.getTransactions(tenantId, page, limit);
       res.json(result);
-    } catch (error: any) {
-      console.error('Error fetching transactions:', error);
-      res.status(500).json({ message: error.message || 'Failed to fetch transactions' });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to fetch transactions', 'GET_TRANSACTIONS');
     }
   }
 );
@@ -89,6 +161,24 @@ router.get(
  *     tags: [Transactions]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Transaction'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/:id',
@@ -104,9 +194,8 @@ router.get(
       }
       
       res.json(transaction);
-    } catch (error: any) {
-      console.error('Error fetching transaction:', error);
-      res.status(500).json({ message: error.message || 'Failed to fetch transaction' });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to fetch transaction', 'GET_TRANSACTION');
     }
   }
 );

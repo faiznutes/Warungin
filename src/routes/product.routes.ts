@@ -9,6 +9,7 @@ import { requireTenantId } from '../utils/tenant';
 import { AuthRequest } from '../middlewares/auth';
 import { logAction } from '../middlewares/audit-logger';
 import { validateImageUpload } from '../middlewares/file-upload-validator';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -25,21 +26,40 @@ const router = Router();
  *         name: page
  *         schema:
  *           type: integer
+ *           default: 1
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           default: 10
+ *         description: Items per page
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
+ *         description: Search term
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
+ *         description: Filter by category
  *     responses:
  *       200:
  *         description: List of products
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/',
@@ -51,8 +71,8 @@ router.get(
       const tenantId = requireTenantId(req);
       const result = await productService.getProducts(tenantId, req.query as any);
       res.json(result);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'PRODUCT');
     }
   }
 );
@@ -65,6 +85,33 @@ router.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ *                 price:
+ *                   type: number
+ *                 stock:
+ *                   type: integer
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.get(
   '/:id',
@@ -77,8 +124,8 @@ router.get(
         return res.status(404).json({ message: 'Product not found' });
       }
       res.json(product);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'PRODUCT');
     }
   }
 );
@@ -91,6 +138,46 @@ router.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - price
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Product Name
+ *               price:
+ *                 type: number
+ *                 example: 10000
+ *               stock:
+ *                 type: integer
+ *                 example: 100
+ *               category:
+ *                 type: string
+ *                 example: Category Name
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Product created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.post(
   '/',
@@ -107,9 +194,9 @@ router.post(
       await logAction(req, 'CREATE', 'products', product.id, { name: product.name, price: product.price }, 'SUCCESS');
       
       res.status(201).json(product);
-    } catch (error: any) {
-      await logAction(req, 'CREATE', 'products', null, { error: error.message }, 'FAILED', error.message);
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      await logAction(req, 'CREATE', 'products', null, { error: (error as Error).message }, 'FAILED', (error as Error).message);
+      handleRouteError(res, error, 'Failed to create product', 'CREATE_PRODUCT');
     }
   }
 );
@@ -122,6 +209,31 @@ router.post(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateProductRequest'
+ *     responses:
+ *       200:
+ *         description: Product updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.put(
   '/:id',
@@ -137,12 +249,9 @@ router.put(
       await logAction(req, 'UPDATE', 'products', product.id, { changes: req.body }, 'SUCCESS');
       
       res.json(product);
-    } catch (error: any) {
-      await logAction(req, 'UPDATE', 'products', req.params.id, { error: error.message }, 'FAILED', error.message);
-      if (error.message === 'Product not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      await logAction(req, 'UPDATE', 'products', req.params.id, { error: (error as Error).message }, 'FAILED', (error as Error).message);
+      handleRouteError(res, error, 'Failed to update product', 'UPDATE_PRODUCT');
     }
   }
 );
@@ -155,6 +264,19 @@ router.put(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Product ID
+ *     responses:
+ *       204:
+ *         description: Product deleted successfully
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.delete(
   '/:id',
@@ -171,12 +293,9 @@ router.delete(
       }
       
       res.status(204).send();
-    } catch (error: any) {
-      await logAction(req, 'DELETE', 'products', req.params.id, { error: error.message }, 'FAILED', error.message);
-      if (error.message === 'Product not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      await logAction(req, 'DELETE', 'products', req.params.id, { error: (error as Error).message }, 'FAILED', (error as Error).message);
+      handleRouteError(res, error, 'Failed to delete product', 'DELETE_PRODUCT');
     }
   }
 );
@@ -189,6 +308,42 @@ router.delete(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - quantity
+ *             properties:
+ *               quantity:
+ *                 type: integer
+ *                 description: Stock quantity
+ *               operation:
+ *                 type: string
+ *                 enum: [set, add, subtract]
+ *                 default: set
+ *                 description: Operation type (set, add, or subtract)
+ *     responses:
+ *       200:
+ *         description: Stock updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.put(
   '/:id/stock',
@@ -204,11 +359,8 @@ router.put(
         operation || 'set'
       );
       res.json(product);
-    } catch (error: any) {
-      if (error.message === 'Product not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'PRODUCT');
     }
   }
 );

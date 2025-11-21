@@ -5,8 +5,50 @@ import customerService from '../services/customer.service';
 import { createCustomerSchema, updateCustomerSchema, getCustomersQuerySchema } from '../validators/customer.validator';
 import { validate } from '../middlewares/validator';
 import { requireTenantId } from '../utils/tenant';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
+
+/**
+ * @swagger
+ * /api/customers:
+ *   get:
+ *     summary: Get all customers
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of customers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 
 router.get(
   '/',
@@ -18,12 +60,34 @@ router.get(
       const tenantId = requireTenantId(req);
       const result = await customerService.getCustomers(tenantId, req.query as any);
       res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to get customers', 'GET_CUSTOMERS');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   get:
+ *     summary: Get customer by ID
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Customer details
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.get(
   '/:id',
   authGuard,
@@ -36,12 +100,47 @@ router.get(
         return res.status(404).json({ message: 'Customer not found' });
       }
       res.json(customer);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to get customers', 'GET_CUSTOMERS');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/customers:
+ *   post:
+ *     summary: Create new customer
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Customer created successfully
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.post(
   '/',
   authGuard,
@@ -52,29 +151,56 @@ router.post(
       const tenantId = requireTenantId(req);
       const customer = await customerService.createCustomer(req.body, tenantId);
       res.status(201).json(customer);
-    } catch (error: any) {
-      console.error('Error creating customer:', error);
-      // Handle Prisma/database errors
-      if (error.code === 'P1001' || error.code === 'P1002' || error.message?.includes('connect')) {
-        res.status(503).json({ 
-          error: 'Database connection failed',
-          message: 'Unable to connect to database. Please try again.' 
-        });
-      } else if (error.code?.startsWith('P')) {
-        res.status(500).json({ 
-          error: 'Database error',
-          message: error.message || 'An error occurred while creating customer' 
-        });
-      } else {
-        res.status(500).json({ 
-          error: 'Failed to create customer',
-          message: error.message || 'An unexpected error occurred' 
-        });
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to create customer', 'CREATE_CUSTOMER');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   put:
+ *     summary: Update customer
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Customer ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Customer updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Customer'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.put(
   '/:id',
   authGuard,
@@ -85,15 +211,34 @@ router.put(
       const tenantId = requireTenantId(req);
       const customer = await customerService.updateCustomer(req.params.id, req.body, tenantId);
       res.json(customer);
-    } catch (error: any) {
-      if (error.message === 'Customer not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to update customer', 'UPDATE_CUSTOMER');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/customers/{id}:
+ *   delete:
+ *     summary: Delete customer
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema: { type: string }
+ *         required: true
+ *         description: Customer ID
+ *     responses:
+ *       204:
+ *         description: Customer deleted successfully
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 router.delete(
   '/:id',
   authGuard,
@@ -103,11 +248,8 @@ router.delete(
       const tenantId = requireTenantId(req);
       await customerService.deleteCustomer(req.params.id, tenantId);
       res.status(204).send();
-    } catch (error: any) {
-      if (error.message === 'Customer not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to update customer', 'UPDATE_CUSTOMER');
     }
   }
 );

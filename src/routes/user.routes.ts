@@ -8,6 +8,7 @@ import { z } from 'zod';
 import prisma from '../config/database';
 import { AuthRequest } from '../middlewares/auth';
 import { logAction } from '../middlewares/audit-logger';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -35,6 +36,46 @@ const updateUserSchema = createUserSchema.partial().extend({
   }).optional(),
 });
 
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get all users (ADMIN_TENANT only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Only tenant admin can view users
+ */
 router.get(
   '/',
   authGuard,
@@ -53,12 +94,41 @@ router.get(
       const limit = parseInt(req.query.limit as string) || 10;
       const result = await userService.getUsers(tenantId, page, limit);
       res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   get:
+ *     summary: Get user by ID (ADMIN_TENANT only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Only tenant admin can view user details
+ */
 router.get(
   '/:id',
   authGuard,
@@ -77,12 +147,59 @@ router.get(
         return res.status(404).json({ message: 'User not found' });
       }
       res.json(user);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/users:
+ *   post:
+ *     summary: Create new user (ADMIN_TENANT only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - role
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: john@example.com
+ *               password:
+ *                 type: string
+ *                 description: Optional password (auto-generated if not provided)
+ *               role:
+ *                 type: string
+ *                 enum: [ADMIN_TENANT, SUPERVISOR, CASHIER, KITCHEN]
+ *                 example: CASHIER
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Only tenant admin can create users
+ */
 router.post(
   '/',
   authGuard,
@@ -110,13 +227,91 @@ router.post(
       );
       
       res.status(201).json(result);
-    } catch (error: any) {
-      await logAction(req as AuthRequest, 'CREATE', 'users', null, { error: error.message }, 'FAILED', error.message);
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      const err = error as Error;
+      await logAction(req as AuthRequest, 'CREATE', 'users', null, { error: err.message }, 'FAILED', err.message);
+      handleRouteError(res, error, 'Failed to create user', 'CREATE_USER');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   put:
+ *     summary: Update user (ADMIN_TENANT only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [ADMIN_TENANT, SUPERVISOR, CASHIER, KITCHEN]
+ *               isActive:
+ *                 type: boolean
+ *               permissions:
+ *                 type: object
+ *                 properties:
+ *                   canEditOrders:
+ *                     type: boolean
+ *                   canDeleteOrders:
+ *                     type: boolean
+ *                   canCancelOrders:
+ *                     type: boolean
+ *                   canRefundOrders:
+ *                     type: boolean
+ *                   canViewReports:
+ *                     type: boolean
+ *                   canEditReports:
+ *                     type: boolean
+ *                   canExportReports:
+ *                     type: boolean
+ *                   canManageProducts:
+ *                     type: boolean
+ *                   canManageCustomers:
+ *                     type: boolean
+ *                   allowedStoreIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   assignedStoreId:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Only tenant admin can update users
+ */
 router.put(
   '/:id',
   authGuard,
@@ -201,16 +396,39 @@ router.put(
       );
       
       res.json(user);
-    } catch (error: any) {
-      await logAction(req as AuthRequest, 'UPDATE', 'users', req.params.id, { error: error.message }, 'FAILED', error.message);
-      if (error.message === 'User not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      const err = error as Error;
+      await logAction(req as AuthRequest, 'UPDATE', 'users', req.params.id, { error: err.message }, 'FAILED', err.message);
+      handleRouteError(res, error, 'Failed to update user', 'UPDATE_USER');
     }
   }
 );
 
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     summary: Delete user (ADMIN_TENANT only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       204:
+ *         description: User deleted successfully
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Only tenant admin can delete users
+ */
 router.delete(
   '/:id',
   authGuard,
@@ -242,12 +460,10 @@ router.delete(
       );
       
       res.status(204).send();
-    } catch (error: any) {
-      await logAction(req as AuthRequest, 'DELETE', 'users', req.params.id, { error: error.message }, 'FAILED', error.message);
-      if (error.message === 'User not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      const err = error as Error;
+      await logAction(req as AuthRequest, 'DELETE', 'users', req.params.id, { error: err.message }, 'FAILED', err.message);
+      handleRouteError(res, error, 'Failed to delete user', 'DELETE_USER');
     }
   }
 );
@@ -269,11 +485,8 @@ router.get(
       const tenantId = requireTenantId(req);
       const result = await userService.getPassword(req.params.id, tenantId);
       res.json(result);
-    } catch (error: any) {
-      if (error.message === 'User not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );
@@ -294,11 +507,8 @@ router.post(
       const tenantId = requireTenantId(req);
       const result = await userService.resetPassword(req.params.id, tenantId);
       res.json(result);
-    } catch (error: any) {
-      if (error.message === 'User not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );
@@ -319,11 +529,8 @@ router.post(
       const tenantId = requireTenantId(req);
       const user = await userService.updateUser(req.params.id, { isActive: true }, tenantId);
       res.json(user);
-    } catch (error: any) {
-      if (error.message === 'User not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );
@@ -344,11 +551,8 @@ router.post(
       const tenantId = requireTenantId(req);
       const user = await userService.updateUser(req.params.id, { isActive: false }, tenantId);
       res.json(user);
-    } catch (error: any) {
-      if (error.message === 'User not found') {
-        return res.status(404).json({ message: error.message });
-      }
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );
@@ -357,10 +561,47 @@ router.post(
  * @swagger
  * /api/users/bulk-update-status:
  *   post:
- *     summary: Bulk update user status (activate/deactivate)
+ *     summary: Bulk update user status (activate/deactivate) (ADMIN_TENANT only)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userIds
+ *               - isActive
+ *             properties:
+ *               userIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *                 example: ["user1", "user2"]
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Users updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 updated:
+ *                   type: integer
+ *                 failed:
+ *                   type: integer
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Only admin can bulk update user status
  */
 router.post(
   '/bulk-update-status',
@@ -383,8 +624,8 @@ router.post(
       const { userIds, isActive } = req.body;
       const result = await userService.bulkUpdateUserStatus(tenantId, userIds, isActive);
       res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to process request', 'USER');
     }
   }
 );

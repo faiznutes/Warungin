@@ -1,13 +1,24 @@
 import { PrismaClient, Customer } from '@prisma/client';
 import { CreateCustomerInput, UpdateCustomerInput, GetCustomersQuery } from '../validators/customer.validator';
 import prisma from '../config/database';
-import { getRedisClient } from '../config/redis';
+import CacheService from '../utils/cache';
 import logger from '../utils/logger';
 
 export class CustomerService {
-  async getCustomers(tenantId: string, query: GetCustomersQuery) {
+  async getCustomers(tenantId: string, query: GetCustomersQuery, useCache: boolean = true) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const skip = (page - 1) * limit;
+
+    // Create cache key
+    const cacheKey = `customers:${tenantId}:${JSON.stringify({ page, limit, search, sortBy, sortOrder })}`;
+
+    // Try to get from cache first
+    if (useCache) {
+      const cached = await CacheService.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
 
     const where: any = {
       tenantId,
@@ -37,27 +48,33 @@ export class CustomerService {
       prisma.customer.count({ where }),
     ]);
 
-    // Calculate total spent for each customer
-    const customersWithStats = await Promise.all(
-      customers.map(async (customer) => {
-        const orders = await prisma.order.aggregate({
+    // Optimize: Get all customer totals in one query instead of N queries (fix N+1)
+    const customerIds = customers.map(c => c.id);
+    const customerTotals = customerIds.length > 0
+      ? await prisma.order.groupBy({
+          by: ['customerId'],
           where: {
             tenantId,
-            customerId: customer.id,
+            customerId: { in: customerIds },
             status: 'COMPLETED',
           },
           _sum: { total: true },
-        });
+        })
+      : [];
 
-        return {
-          ...customer,
-          totalSpent: Number(orders._sum.total || 0),
-          totalOrders: customer._count.orders,
-        };
-      })
+    // Create a map for O(1) lookup
+    const totalsMap = new Map(
+      customerTotals.map(item => [item.customerId!, Number(item._sum.total || 0)])
     );
 
-    return {
+    // Calculate total spent for each customer (using the map)
+    const customersWithStats = customers.map((customer) => ({
+      ...customer,
+      totalSpent: totalsMap.get(customer.id) || 0,
+      totalOrders: customer._count.orders,
+    }));
+
+    const result = {
       data: customersWithStats,
       pagination: {
         page,
@@ -66,10 +83,27 @@ export class CustomerService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    // Cache the result (5 minutes TTL)
+    if (useCache) {
+      await CacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
   }
 
-  async getCustomerById(id: string, tenantId: string): Promise<Customer | null> {
-    return prisma.customer.findFirst({
+  async getCustomerById(id: string, tenantId: string, useCache: boolean = true): Promise<Customer | null> {
+    const cacheKey = `customer:${tenantId}:${id}`;
+
+    // Try to get from cache first
+    if (useCache) {
+      const cached = await CacheService.get<Customer | null>(cacheKey);
+      if (cached !== null) {
+        return cached;
+      }
+    }
+
+    const customer = await prisma.customer.findFirst({
       where: { id, tenantId },
       include: {
         orders: {
@@ -90,6 +124,13 @@ export class CustomerService {
         },
       },
     });
+
+    // Cache the result (5 minutes TTL)
+    if (useCache && customer) {
+      await CacheService.set(cacheKey, customer, 300);
+    }
+
+    return customer;
   }
 
   async createCustomer(data: CreateCustomerInput, tenantId: string): Promise<Customer> {
@@ -148,26 +189,19 @@ export class CustomerService {
   }
 
   /**
-   * Invalidate analytics cache for a tenant
+   * Invalidate cache for a tenant after customer operations
    */
   private async invalidateAnalyticsCache(tenantId: string): Promise<void> {
     try {
-      const redis = getRedisClient();
-      if (redis) {
-        // Delete all analytics cache keys for this tenant
-        const keys = await redis.keys(`analytics:*:${tenantId}`);
-        const keys2 = await redis.keys(`analytics:${tenantId}:*`);
-        const allKeys = [...keys, ...keys2];
-        if (allKeys.length > 0) {
-          await redis.del(...allKeys);
-          logger.info('Invalidated analytics cache after customer operation', {
-            tenantId,
-            cacheKeysDeleted: allKeys.length
-          });
-        }
-      }
+      // Invalidate customer and analytics cache
+      await CacheService.deletePattern(`customers:${tenantId}:*`);
+      await CacheService.deletePattern(`customer:${tenantId}:*`);
+      await CacheService.deletePattern(`analytics:*:${tenantId}`);
+      await CacheService.deletePattern(`analytics:${tenantId}:*`);
+      await CacheService.deletePattern(`dashboard:${tenantId}:*`);
+      logger.info('Invalidated cache after customer operation', { tenantId });
     } catch (error: any) {
-      logger.warn('Failed to invalidate analytics cache', {
+      logger.warn('Failed to invalidate cache', {
         error: error.message,
         tenantId
       });

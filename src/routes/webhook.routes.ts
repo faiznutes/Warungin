@@ -6,6 +6,7 @@ import { validate } from '../middlewares/validator';
 import { requireTenantId } from '../utils/tenant';
 import logger from '../utils/logger';
 import prisma from '../config/database';
+import { handleRouteError } from '../utils/route-error-handler';
 
 const router = Router();
 
@@ -38,9 +39,8 @@ router.get(
       const webhooks = await webhookService.getWebhooks(tenantId, includeInactive);
 
       res.json({ webhooks });
-    } catch (error: any) {
-      logger.error('Error getting webhooks', { error: error.message, tenantId: req.tenantId });
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to get webhooks', 'GET_WEBHOOKS');
     }
   }
 );
@@ -66,9 +66,8 @@ router.post(
       const webhook = await webhookService.createWebhook(tenantId, data);
 
       res.status(201).json({ webhook });
-    } catch (error: any) {
-      logger.error('Error creating webhook', { error: error.message, tenantId: req.tenantId });
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to create webhook', 'CREATE_WEBHOOK');
     }
   }
 );
@@ -95,9 +94,8 @@ router.put(
       const webhook = await webhookService.updateWebhook(id, tenantId, data);
 
       res.json({ webhook });
-    } catch (error: any) {
-      logger.error('Error updating webhook', { error: error.message, webhookId: req.params.id });
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to update webhook', 'UPDATE_WEBHOOK');
     }
   }
 );
@@ -122,9 +120,8 @@ router.delete(
       await webhookService.deleteWebhook(id, tenantId);
 
       res.json({ message: 'Webhook berhasil dihapus' });
-    } catch (error: any) {
-      logger.error('Error deleting webhook', { error: error.message, webhookId: req.params.id });
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to delete webhook', 'DELETE_WEBHOOK');
     }
   }
 );
@@ -151,9 +148,8 @@ router.get(
       const result = await webhookService.getDeliveries(id, page, limit, status);
 
       res.json(result);
-    } catch (error: any) {
-      logger.error('Error getting webhook deliveries', { error: error.message, webhookId: req.params.id });
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to get webhook deliveries', 'GET_WEBHOOK_DELIVERIES');
     }
   }
 );
@@ -197,9 +193,8 @@ router.post(
       await webhookService.triggerWebhook(tenantId, req.body.event || 'test.event', payload, id);
 
       res.json({ message: 'Test webhook triggered successfully' });
-    } catch (error: any) {
-      logger.error('Error testing webhook', { error: error.message, webhookId: req.params.id });
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to test webhook', 'TEST_WEBHOOK');
     }
   }
 );
@@ -224,13 +219,8 @@ router.post(
       await webhookService.replayDelivery(id, deliveryId, tenantId);
 
       res.json({ message: 'Webhook delivery replayed successfully' });
-    } catch (error: any) {
-      logger.error('Error replaying webhook delivery', { 
-        error: error.message, 
-        webhookId: req.params.id,
-        deliveryId: req.params.deliveryId 
-      });
-      res.status(500).json({ message: error.message });
+    } catch (error: unknown) {
+      handleRouteError(res, error, 'Failed to replay webhook delivery', 'REPLAY_WEBHOOK');
     }
   }
 );

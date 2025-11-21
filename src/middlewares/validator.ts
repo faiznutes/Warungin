@@ -26,7 +26,7 @@ export const validate = (schemas: { body?: AnyZodObject; query?: AnyZodObject; p
         
         return res.status(400).json({
           error: 'VALIDATION_ERROR',
-          message: 'Data tidak valid',
+          message: 'Data tidak valid. Silakan periksa field yang diisi.',
           errors: error.errors.map((err) => ({
             path: err.path.join('.'),
             message: err.message,

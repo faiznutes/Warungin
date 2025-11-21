@@ -37,6 +37,17 @@ export const getTenantId = (req: Request): string | null => {
 };
 
 /**
+ * Get userId from request
+ */
+export const requireUserId = (req: Request): string => {
+  const user = (req as any).user;
+  if (!user || !user.id) {
+    throw new Error('User ID is required. Please authenticate first.');
+  }
+  return user.id;
+};
+
+/**
  * Validate that tenantId exists (required for all roles except SUPER_ADMIN without selected tenant)
  */
 export const requireTenantId = (req: Request): string => {

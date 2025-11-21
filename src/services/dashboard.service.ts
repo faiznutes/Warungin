@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import orderService from './order.service';
 import logger from '../utils/logger';
+import CacheService from '../utils/cache';
 
 // Export interface untuk type safety
 export interface TopProductDetail {
@@ -18,7 +19,18 @@ export interface TopProductDetail {
 }
 
 export class DashboardService {
-  async getDashboardStats(tenantId: string, startDate?: Date, endDate?: Date) {
+  async getDashboardStats(tenantId: string, startDate?: Date, endDate?: Date, useCache: boolean = true) {
+    // Create cache key based on tenant, dates
+    const cacheKey = `dashboard:${tenantId}:${startDate?.toISOString() || 'all'}:${endDate?.toISOString() || 'all'}`;
+
+    // Try to get from cache first
+    if (useCache) {
+      const cached = await CacheService.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       const where: Prisma.OrderWhereInput = {
         tenantId,
@@ -223,6 +235,38 @@ export class DashboardService {
       },
       recentOrders,
     };
+
+    // Cache the result (5 minutes TTL for dashboard stats)
+    const result = {
+      overview: {
+        totalOrders,
+        totalRevenue: currentRevenue,
+        totalProducts,
+        totalCustomers,
+        totalMembers,
+        todayOrders,
+        todayRevenue: Number(todayRevenue._sum.total || 0),
+        revenueGrowth: Math.round(revenueGrowth * 100) / 100,
+      },
+      alerts: {
+        lowStockProducts: lowStockProducts.length,
+        lowStockProductsList: lowStockProducts,
+      },
+      charts: {
+        salesByStatus: salesByStatus.map((item) => ({
+          status: item.status,
+          count: item._count.id,
+        })),
+        topProducts: topProductsWithDetails,
+      },
+      recentOrders,
+    };
+
+    if (useCache) {
+      await CacheService.set(cacheKey, result, 300);
+    }
+
+    return result;
     } catch (error: unknown) {
       const err = error as Error & { code?: string; message?: string };
       logger.error('Error in getDashboardStats:', err);

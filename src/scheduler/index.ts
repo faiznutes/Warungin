@@ -136,6 +136,44 @@ export const scheduleJobs = async (): Promise<void> => {
   }
 };
 
+// Process scheduled emails (runs every minute)
+// This can be called directly or integrated with a cron library
+let scheduledEmailInterval: NodeJS.Timeout | null = null;
+
+export const startScheduledEmailProcessor = (): void => {
+  // Only start if not already running
+  if (scheduledEmailInterval) {
+    return;
+  }
+
+  // Import email scheduler service
+  import('../services/email-scheduler.service').then(({ default: emailSchedulerService }) => {
+    // Process scheduled emails every minute
+    scheduledEmailInterval = setInterval(async () => {
+      try {
+        const results = await emailSchedulerService.processScheduledEmails();
+        if (results.processed > 0) {
+          logger.info(`✅ Processed ${results.processed} scheduled emails: ${results.sent} sent, ${results.failed} failed`);
+        }
+      } catch (error: any) {
+        logger.error('❌ Error processing scheduled emails:', error);
+      }
+    }, 60000); // Every minute (60000 ms)
+
+    logger.info('✅ Scheduled email processor started (runs every minute)');
+  }).catch((error) => {
+    logger.warn('⚠️  Failed to start scheduled email processor:', error);
+  });
+};
+
+export const stopScheduledEmailProcessor = (): void => {
+  if (scheduledEmailInterval) {
+    clearInterval(scheduledEmailInterval);
+    scheduledEmailInterval = null;
+    logger.info('✅ Scheduled email processor stopped');
+  }
+};
+
 // Start scheduler (only after workers are initialized)
 if (process.env.NODE_ENV !== 'test') {
   // Initialize workers asynchronously
@@ -149,6 +187,11 @@ if (process.env.NODE_ENV !== 'test') {
       });
     }
   }, 2000);
+
+  // Start scheduled email processor
+  setTimeout(() => {
+    startScheduledEmailProcessor();
+  }, 3000); // Start after workers are initialized
 }
 
 // Email queue disabled - using n8n instead
