@@ -3,12 +3,22 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app
 
+# Configure npm for better network handling
+RUN npm config set fetch-timeout 300000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000
+
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies
 # Use npm install to handle lock file sync issues, fallback to legacy-peer-deps if needed
-RUN npm install --legacy-peer-deps || npm install
+# Add retry logic for network issues
+RUN npm install --legacy-peer-deps || \
+    npm install || \
+    (sleep 10 && npm install --legacy-peer-deps) || \
+    (sleep 20 && npm install)
 
 # Copy source code
 COPY . .
