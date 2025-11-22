@@ -13,14 +13,12 @@ RUN npm config set fetch-timeout 300000 && \
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies with cache optimization
-# Use npm ci for faster, reliable builds, fallback to install if needed
-# Add retry logic for network issues
-RUN npm ci --legacy-peer-deps || \
-    npm install --legacy-peer-deps || \
-    npm install || \
-    (sleep 10 && npm install --legacy-peer-deps) || \
-    (sleep 20 && npm install)
+# Install dependencies
+# Skip npm ci (causing issues), use npm install directly with retry logic
+RUN npm install --legacy-peer-deps || \
+    (echo "First attempt failed, retrying..." && sleep 10 && npm install --legacy-peer-deps) || \
+    (echo "Second attempt failed, retrying..." && sleep 20 && npm install --legacy-peer-deps) || \
+    (echo "Third attempt, using npm install without legacy-peer-deps..." && sleep 30 && npm install)
 
 # Copy source code
 COPY src ./src
@@ -54,13 +52,11 @@ RUN apk add --no-cache dumb-init wget
 COPY package*.json ./
 
 # Install production dependencies only
-# Use npm ci for faster builds, fallback to install if needed
-# Add retry logic for network issues
-RUN npm ci --omit=dev --legacy-peer-deps || \
-    npm install --omit=dev --legacy-peer-deps || \
-    npm install --omit=dev || \
-    (sleep 10 && npm install --omit=dev --legacy-peer-deps) || \
-    (sleep 20 && npm install --omit=dev)
+# Skip npm ci, use npm install directly with retry logic
+RUN npm install --omit=dev --legacy-peer-deps || \
+    (echo "First attempt failed, retrying..." && sleep 10 && npm install --omit=dev --legacy-peer-deps) || \
+    (echo "Second attempt failed, retrying..." && sleep 20 && npm install --omit=dev --legacy-peer-deps) || \
+    (echo "Third attempt, using npm install without legacy-peer-deps..." && sleep 30 && npm install --omit=dev)
 
 # Copy built files
 COPY --from=backend-builder /app/dist ./dist
