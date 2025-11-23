@@ -90,9 +90,54 @@ fi
 echo -e "${YELLOW}Branch: $BRANCH${NC}"
 echo ""
 
-# Add all files
-echo -e "${YELLOW}📝 Adding files...${NC}"
-git add .
+# Add only essential files: frontend, backend, database, and cloudflare config
+echo -e "${YELLOW}📝 Adding essential files (frontend, backend, database, cloudflare)...${NC}"
+
+# Frontend
+if [ -d "client" ]; then
+    git add client/
+    echo "  ✅ Frontend (client/)"
+fi
+
+# Backend
+if [ -d "src" ]; then
+    git add src/
+    echo "  ✅ Backend (src/)"
+fi
+
+# Package files
+[ -f "package.json" ] && git add package.json && echo "  ✅ package.json"
+[ -f "package-lock.json" ] && git add package-lock.json && echo "  ✅ package-lock.json"
+[ -f "tsconfig.json" ] && git add tsconfig.json && echo "  ✅ tsconfig.json"
+
+# Database
+if [ -d "prisma" ]; then
+    git add prisma/
+    echo "  ✅ Database (prisma/)"
+fi
+
+# Docker configuration
+[ -f "docker-compose.yml" ] && git add docker-compose.yml && echo "  ✅ docker-compose.yml"
+[ -f "Dockerfile.backend" ] && git add Dockerfile.backend && echo "  ✅ Dockerfile.backend"
+[ -f ".dockerignore" ] && git add .dockerignore && echo "  ✅ .dockerignore"
+
+# Nginx configuration
+if [ -d "nginx" ]; then
+    git add nginx/
+    echo "  ✅ Nginx config (nginx/)"
+fi
+
+# Cloudflare tunnel configuration (env.example contains CLOUDFLARE_TUNNEL_TOKEN)
+[ -f "env.example" ] && git add env.example && echo "  ✅ env.example (Cloudflare config)"
+
+# Scripts needed for deployment
+[ -f "scripts/docker-startup.sh" ] && git add scripts/docker-startup.sh && echo "  ✅ docker-startup.sh"
+[ -f "scripts/create-super-admin-docker.js" ] && git add scripts/create-super-admin-docker.js && echo "  ✅ create-super-admin-docker.js"
+
+# Deployment script itself
+git add push-and-deploy-vps.sh && echo "  ✅ push-and-deploy-vps.sh"
+
+echo ""
 
 # Check if there are changes
 if [ -z "$(git status --porcelain)" ]; then
