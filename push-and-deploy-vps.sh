@@ -11,7 +11,7 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-SSH_HOST="warungin@192.168.0.104"
+SSH_HOST="warungin@192.168.0.102"
 SSH_PASSWORD="123"
 PROJECT_DIR="/home/warungin/Warungin"
 
@@ -167,7 +167,7 @@ if command -v sshpass &> /dev/null; then
         echo -e "${RED}❌ Tidak bisa connect ke VPS!${NC}"
         echo -e "${YELLOW}Pastikan:${NC}"
         echo "  1. VPS sudah menyala"
-        echo "  2. IP address benar: 192.168.0.104"
+        echo "  2. IP address benar: 192.168.0.102"
         echo "  3. SSH service berjalan di VPS"
         echo "  4. Network terhubung"
         exit 1
@@ -326,7 +326,7 @@ if command -v sshpass &> /dev/null; then
         fi
         
         # Get IP address
-        IP_ADDRESS=\$(hostname -I | awk '{print \$1}' || echo "192.168.0.104")
+        IP_ADDRESS=\$(hostname -I | awk '{print \$1}' || echo "192.168.0.102")
         echo ""
         echo "📋 Access Information:"
         echo "  - Local IP: \$IP_ADDRESS"
@@ -370,7 +370,7 @@ else
         fi
         
         # Get IP address
-        IP_ADDRESS=\$(hostname -I | awk '{print \$1}' || echo "192.168.0.104")
+        IP_ADDRESS=\$(hostname -I | awk '{print \$1}' || echo "192.168.0.102")
         echo ""
         echo "📋 Access Information:"
         echo "  - Local IP: \$IP_ADDRESS"
@@ -386,14 +386,14 @@ echo -e "🎉 Deployment selesai!"
 echo -e "==========================================${NC}"
 echo ""
 echo -e "${BLUE}📋 Informasi Akses:${NC}"
-echo -e "  - VPS IP: ${YELLOW}192.168.0.104${NC}"
-echo -e "  - Frontend: ${YELLOW}http://192.168.0.104${NC}"
-echo -e "  - Backend API: ${YELLOW}http://192.168.0.104/api${NC}"
-echo -e "  - Health Check: ${YELLOW}http://192.168.0.104/api/health${NC}"
+echo -e "  - VPS IP: ${YELLOW}192.168.0.102${NC}"
+echo -e "  - Frontend: ${YELLOW}http://192.168.0.102${NC}"
+echo -e "  - Backend API: ${YELLOW}http://192.168.0.102/api${NC}"
+echo -e "  - Health Check: ${YELLOW}http://192.168.0.102/api/health${NC}"
 echo ""
 echo -e "${YELLOW}📝 Catatan:${NC}"
 echo "  1. Untuk akses dari luar jaringan lokal, pastikan:"
-echo "     - Port forwarding di router (80, 443) ke 192.168.0.104"
+echo "     - Port forwarding di router (80, 443) ke 192.168.0.102"
 echo "     - Atau gunakan Cloudflare Tunnel (jika dikonfigurasi)"
 echo "  2. Untuk melihat logs:"
 echo "     ssh $SSH_HOST 'cd $PROJECT_DIR && docker compose logs -f'"
