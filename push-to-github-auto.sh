@@ -93,11 +93,24 @@ else
     
     # Commit
     echo -e "${YELLOW}💾 Creating commit...${NC}"
-    COMMIT_MSG="Update: Clean repository structure for Docker deployment"
     
     # Check if this is initial commit
     if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
         COMMIT_MSG="Initial commit: Warungin POS System with Docker deployment"
+    else
+        # Check if this is network timeout fix
+        if git diff --cached --name-only | grep -q "Dockerfile\|update-docker\|build-docker-retry\|DOCKER_NETWORK_TIMEOUT"; then
+            COMMIT_MSG="Fix: Docker network timeout issue - Add npm retry logic and timeout configuration
+
+- Add npm config for longer timeout (5 minutes) and retry mechanism
+- Add retry logic for npm install and npx prisma generate
+- Update Dockerfile.backend and client/Dockerfile with network handling
+- Add build-docker-retry.sh script for build with retry
+- Add update-docker.sh with retry logic for VPS deployment
+- Add documentation: DOCKER_NETWORK_TIMEOUT_FIX.md and UPDATE_DOCKER.md"
+        else
+            COMMIT_MSG="Update: Clean repository structure for Docker deployment"
+        fi
     fi
     
     git commit -m "$COMMIT_MSG" || {

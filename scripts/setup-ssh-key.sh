@@ -1,23 +1,17 @@
 #!/bin/bash
-# Script untuk setup SSH key di WSL
-# Usage: bash scripts/setup-wsl-ssh.sh
+# Script untuk setup SSH key authentication ke VPS
+# Usage: bash scripts/setup-ssh-key.sh
 
 HOST="warungin@192.168.0.101"
+PASSWORD="123"
 SSH_KEY_NAME="id_rsa_warungin"
 SSH_KEY_PATH="$HOME/.ssh/$SSH_KEY_NAME"
 
 echo "=========================================="
-echo "Setup SSH Key in WSL"
+echo "Setup SSH Key Authentication"
 echo "Server: $HOST"
 echo "=========================================="
 echo ""
-
-# Check if running in WSL
-if [ -z "$WSL_DISTRO_NAME" ] && [ -z "$WSLENV" ]; then
-    echo "⚠️  This script is designed for WSL"
-    echo "If you're in Git Bash, the key might already be in Windows"
-    echo ""
-fi
 
 # Check if key already exists
 if [ -f "$SSH_KEY_PATH" ]; then
@@ -25,28 +19,33 @@ if [ -f "$SSH_KEY_PATH" ]; then
     read -p "Do you want to use existing key? (y/n): " use_existing
     if [ "$use_existing" != "y" ]; then
         echo "Generating new SSH key..."
-        ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_PATH" -N "" -C "warungin-vps-wsl"
+        ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_PATH" -N "" -C "warungin-vps"
     fi
 else
     echo "Generating new SSH key..."
-    ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_PATH" -N "" -C "warungin-vps-wsl"
+    ssh-keygen -t rsa -b 4096 -f "$SSH_KEY_PATH" -N "" -C "warungin-vps"
 fi
 
 echo ""
 echo "=== Copying public key to server ==="
-echo "You will be prompted for password: 123"
+echo "You will be prompted for password: $PASSWORD"
 echo ""
 
-# Copy key to server
-cat "$SSH_KEY_PATH.pub" | ssh -o StrictHostKeyChecking=no "$HOST" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+# Try using ssh-copy-id, if not available, use manual method
+if command -v ssh-copy-id &> /dev/null; then
+    ssh-copy-id -i "$SSH_KEY_PATH.pub" "$HOST"
+else
+    # Manual method
+    cat "$SSH_KEY_PATH.pub" | ssh -o StrictHostKeyChecking=no "$HOST" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+fi
 
 echo ""
 echo "=== Testing SSH connection ==="
-ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$HOST" "echo 'SSH key authentication successful from WSL!' && hostname && whoami"
+ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$HOST" "echo 'SSH key authentication successful!' && hostname && whoami"
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo "=== Setting up SSH config in WSL ==="
+    echo "=== Setting up SSH config ==="
     
     # Create or update SSH config
     SSH_CONFIG="$HOME/.ssh/config"
@@ -61,7 +60,7 @@ if [ $? -eq 0 ]; then
     if ! grep -q "Host warungin-vps" "$SSH_CONFIG"; then
         cat >> "$SSH_CONFIG" << EOF
 
-# Warungin VPS (WSL)
+# Warungin VPS
 Host warungin-vps
     HostName 192.168.0.101
     User warungin
@@ -76,11 +75,14 @@ EOF
     
     echo ""
     echo "=========================================="
-    echo "✅ WSL SSH Key Setup Complete!"
+    echo "✅ SSH Key Setup Complete!"
     echo "=========================================="
     echo ""
     echo "You can now connect without password using:"
     echo "  ssh warungin-vps"
+    echo ""
+    echo "Or using the key directly:"
+    echo "  ssh -i $SSH_KEY_PATH $HOST"
     echo ""
 else
     echo ""
@@ -88,3 +90,4 @@ else
     echo "Please check the error above and try again."
     exit 1
 fi
+
